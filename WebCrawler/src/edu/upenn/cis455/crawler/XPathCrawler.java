@@ -2,9 +2,6 @@ package edu.upenn.cis455.crawler;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Date;
 import java.util.LinkedList;
 import java.util.Queue;
 
@@ -37,7 +34,11 @@ public class XPathCrawler {
 			if(success){
 				System.out.println("Database directory at " + crawler.dbLocation + " created");
 			}
-			crawl(startingURL, queue);
+			try {
+				crawl(startingURL, queue);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 
 			DatabaseDAO.setup(databaseDir);
 		
@@ -48,7 +49,7 @@ public class XPathCrawler {
 	public static void crawl(String URL, Queue<String> queue) throws IOException{
 
 		// initialize queue with URL
-		HttpClient client = new HttpClient(); 
+		HttpClient client = new HttpClient(URL); 
 		queue.add(URL);
 				
 		while(!queue.isEmpty()){//while queue is not empty

@@ -23,4 +23,46 @@
 
    <!-- add any additional servlets and servlet mappings here -->
 
+   <servlet>
+     <servlet-name>UserPortal</servlet-name>
+     <servlet-class>edu.upenn.cis455.servlet.UserPortal</servlet-class> 
+   </servlet>
+    
+   <servlet-mapping>
+     <servlet-name>UserPortal</servlet-name>
+     <url-pattern>/UserPortal</url-pattern>
+   </servlet-mapping>  
+
+   <servlet>
+     <servlet-name>CreateUser</servlet-name>
+     <servlet-class>edu.upenn.cis455.servlet.CreateUser</servlet-class> 
+   </servlet>
+    
+   <servlet-mapping>
+     <servlet-name>CreateUser</servlet-name>
+     <url-pattern>/CreateUser</url-pattern>
+   </servlet-mapping>  
+
+   <servlet>
+     <servlet-name>LogOut</servlet-name>
+     <servlet-class>edu.upenn.cis455.servlet.LogOut</servlet-class> 
+   </servlet>
+    
+   <servlet-mapping>
+     <servlet-name>LogOut</servlet-name>
+     <url-pattern>/LogOut</url-pattern>
+   </servlet-mapping>  
+
+
+   <servlet>
+     <servlet-name>DisplayChannels</servlet-name>
+     <servlet-class>edu.upenn.cis455.servlet.DisplayChannels</servlet-class> 
+   </servlet>
+    
+   <servlet-mapping>
+     <servlet-name>DisplayChannels</servlet-name>
+     <url-pattern>/DisplayChannels</url-pattern>
+   </servlet-mapping>  
+
+
 </web-app>

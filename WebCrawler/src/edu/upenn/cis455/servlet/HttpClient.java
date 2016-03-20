@@ -18,10 +18,11 @@ import java.util.Map;
 
 import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
+import javax.xml.xpath.XPathExpression;
+import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 
 import org.w3c.dom.Document;
-import org.w3c.dom.xpath.XPathExpression;
 import org.w3c.tidy.Tidy;
 
 /**
@@ -37,7 +38,7 @@ public class HttpClient {
 	String path; 
 	String response;
 	Map<String, String> headers;
-	
+		
 	/**
 	 * Constructor for HttpClient
 	 * @param url
@@ -48,17 +49,7 @@ public class HttpClient {
 		this.host = "localhost:80";
 		this.headers = new HashMap<String, String>();
 	}
-	
-	/**
-	 *  Empty Constructor for HttpClient
-	 */
-	public HttpClient(){
-		this.url = "Empty";
-		this.port = 80;
-		this.host = "localhost:80";
-		this.headers = new HashMap<String, String>();		
-	}
-	
+		
 	public void setURL(String URL){
 		this.url = URL;
 	}
@@ -223,12 +214,15 @@ public class HttpClient {
 		return tidy.parseDOM(xmlStream, null);		
 	}
 	
-	public ArrayList<String> getXPathExpressions(String XPath){
+	public String getXPathMatches(String XPath, String htmlPage) throws XPathExpressionException{
+		//for webparser, this will get links from the XPath //link/*
+		//should eventually return ArrayList<String> 
 		ArrayList<String> xPathExpressions = new ArrayList<String>();
+		Document DOMdoc = convertHTMLDom(htmlPage);
 		XPathFactory xPathFactory = XPathFactory.newInstance();
 		XPath xPath = xPathFactory.newXPath();
 		XPathExpression xPathExpression = xPath.compile(XPath);
-		Object result = xPathExpression.evalue(tidyDom, XPathConstants.NODESET);
-		return 
+		Object result = xPathExpression.evaluate(DOMdoc, XPathConstants.NODESET);
+		return result.toString();
 	}
 }

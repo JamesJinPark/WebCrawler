@@ -12,6 +12,7 @@ import org.w3c.dom.Document;
 
 import edu.upenn.cis455.crawler.Channel;
 import edu.upenn.cis455.crawler.DatabaseDAO;
+import edu.upenn.cis455.crawler.User;
 import edu.upenn.cis455.xpathengine.XPathEngineImpl;
 
 /**
@@ -23,11 +24,6 @@ import edu.upenn.cis455.xpathengine.XPathEngineImpl;
 public class XPathServlet extends HttpServlet {
 	
 	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException{
-		File databaseDir = new File(getServletContext().getInitParameter("BDBstore"));
-		databaseDir.mkdir();
-		DatabaseDAO.setup(databaseDir);
-		ArrayList<Channel> allChannels = DatabaseDAO.getAllChannels();
-
 		response.setContentType("text/html");
 		
 		PrintWriter out = response.getWriter();
@@ -54,157 +50,163 @@ public class XPathServlet extends HttpServlet {
 		htmlForm.append("<input type=\"text\" name=\"NewPassword\"><br>");
 		htmlForm.append("<input type=\"submit\" value=\"Submit\"/>");
 		htmlForm.append("</form>");
-		
-		htmlForm.append("<h2>Enter XPaths</h2>");
-		htmlForm.append("Separate multiple XPaths using two colons with a space before and after the colons.<br>");
-		htmlForm.append("(e.g.: /example/foo :: /moreExample/bar :: /evenMore[@foo=\"bar\"])<br><br>");
-		htmlForm.append("<form method=\"POST\" action=\"/servlet/xpath\">");
-		htmlForm.append("<input type=\"text\" name=\"XPath\" ><br>");
-		htmlForm.append("<input type=\"submit\" value=\"Submit\"/>");
-		
-		htmlForm.append("<h2>Enter URL for XML document</h2>");
-		htmlForm.append("<input type=\"text\" name=\"URL\" ><br>");
-		htmlForm.append("<input type=\"submit\" value=\"Submit Form\"/><br>");
-		htmlForm.append("</form>");
-		
-		if(!allChannels.isEmpty()){
-			htmlForm.append("<h2>All Channels</h2><br>");
-			for(Channel channel : allChannels ){
-				htmlForm.append(channel.toString());
-			}
-		} 
-		htmlForm.append("</html>");
-		
+			
 		out.println(htmlForm.toString());
 		out.flush();
 		out.close();
-		DatabaseDAO.shutdown();
 	}
 	
 	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException{
+		File databaseDir = new File(getServletContext().getInitParameter("BDBstore"));
+		databaseDir.mkdir();
+		DatabaseDAO.setup(databaseDir);
+
 		response.setContentType("text/html");
 		PrintWriter out = response.getWriter();
 		StringBuffer htmlBuffer = new StringBuffer();
-		boolean validInputs = true; 
-		response.setContentType("text/html");
-				
-		String url = request.getParameter("URL");
-		String XPath = request.getParameter("XPath");
-		
+
 		String loginUsername = request.getParameter("UserName");
 		String loginPassword = request.getParameter("Password");
 
 		String newAccount = request.getParameter("NewUserName");
 		String newAccountPassword = request.getParameter("NewPassword");
 		
-//		if(url == null || url == ""){
-//			response.setStatus(404);
-//			htmlBuffer.append("<!DOCTYPE HTML PUBLIC>"); 
-//			htmlBuffer.append("<html><head>"); 
-//			htmlBuffer.append("<title>404 Not Found</title>"); 
-//			htmlBuffer.append("</head><body>"); 
-//			htmlBuffer.append("<h1>404 URL Not Found</h1>"); 
-//			htmlBuffer.append("Error with URL input."); 
-//			htmlBuffer.append("</body></html>"); 
-//			try { //hack-y solution to prevent system exiting too fast 
-//				Thread.sleep(1000);
-//			} catch (InterruptedException e) {
-//				e.printStackTrace();
-//			}
-//			validInputs = false;
-//		} else if (XPath == null || XPath == ""){
-//			response.setStatus(400);
-//			htmlBuffer.append("<!DOCTYPE HTML PUBLIC>"); 
-//			htmlBuffer.append("<html><head>"); 
-//			htmlBuffer.append("<title>400 Malformed Request</title>");
-//			htmlBuffer.append("</head><body>"); 
-//			htmlBuffer.append("<h1>400 Malformed Request</h1>");
-//			htmlBuffer.append("Error with XPath input."); 
-//			htmlBuffer.append("</body></html>"); 
-//			try { //hack-y solution to prevent system exiting too fast 
-//				Thread.sleep(1000); 
-//			} catch (InterruptedException e) {
-//				e.printStackTrace();
-//			}
-//			validInputs = false;
-//		}
+		int choice = 0; //default 
+		if(loginUsername != null && loginPassword != null){
+			choice = 1; //user entered login in info
+		} 
+		if(newAccount != null && newAccountPassword != null){
+			choice = 2; //user tried to create new account
+		}
+
 		
-		if(validInputs){
-			
-			//call HttpClient
-			HttpClient client = new HttpClient(url); 
-			String urlResponse = client.downloadDocFromUrl(url); //opens connection to server that hosts HTML or XML doc
+		switch(choice){				
+		case 1:			
+			boolean userExists = DatabaseDAO.userExists(loginUsername);
+			userExists = true;
 
-			if(urlResponse.equals("-1")){
-				response.setStatus(404);
-				htmlBuffer.append("<!DOCTYPE HTML PUBLIC>"); 
-				htmlBuffer.append("<html><head>"); 
-				htmlBuffer.append("<title>404 Not Found</title>"); 
-				htmlBuffer.append("</head><body>"); 
-				htmlBuffer.append("<h1>404 URL Not Found</h1>"); 
-				htmlBuffer.append("Error with URL input."); 
-				htmlBuffer.append("Could not connect to: " + url); 
-				htmlBuffer.append("</body></html>"); 
-				try { //hack-y solution to prevent system exiting too fast 
-					Thread.sleep(1000);
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}				
-			}else if(urlResponse.equals("-2")){
-				response.setStatus(502);
-				htmlBuffer.append("<!DOCTYPE HTML PUBLIC>"); 
-				htmlBuffer.append("<html><head>"); 
-				htmlBuffer.append("<title>502 Bad Gateway</title>"); 
-				htmlBuffer.append("</head><body>"); 
-				htmlBuffer.append("<h1>502 Bad Gateway</h1>"); 
-				htmlBuffer.append("No response from upstream server!"); 
-				htmlBuffer.append("</body></html>"); 
-				try { //hack-y solution to prevent system exiting too fast 
-					Thread.sleep(1000);
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}				
-			} else {			
-				//Convert the response to Document DOM
-				Document xmlDoc = client.convertDom(urlResponse);
-				
-				//call XPathEngine
-				XPathEngineImpl engine = new XPathEngineImpl();
-				
-				//multiple xpaths
-				String[] xpaths = XPath.split(" :: ");
-				engine.setXPaths(xpaths);
-				
-				//check whether document in URL matches XPath
-				boolean[] urlMatches = engine.evaluate(xmlDoc);
-				
-				htmlBuffer.append("<html><head>"); 
-				htmlBuffer.append("<style>table, th, td {border: 1px solid black;"); 
-				htmlBuffer.append("border-collapse: collapse;}th, td {padding: 24px;}</style>");
-				htmlBuffer.append("<title>XPath Engine</title>"); 
-				htmlBuffer.append("</head><body>"); 
-				htmlBuffer.append("<h1>XPath Engine</h1>"); 
-				htmlBuffer.append("LoginName: " + loginUsername); 
-				htmlBuffer.append("LoginPassword: " + loginPassword); 
+			if(userExists){
+				if(loginPassword.equals(DatabaseDAO.getUser(loginUsername).getPassword())){
+					request.getSession().setAttribute("Username", loginUsername);
+					htmlBuffer.append("<html><head>"); 
+					htmlBuffer.append("<meta http-equiv=\"refresh\" "); 		
+					htmlBuffer.append("content=\"0;URL=\'"); 
+					htmlBuffer.append("/servlet/UserPortal\'\"" + "></meta>"); //redirect url 
+					htmlBuffer.append("</head><body>");
+					htmlBuffer.append("</body></html>"); 
 
-				htmlBuffer.append("NewAccount: " + newAccount); 
-				htmlBuffer.append("NewAccountPassword: " + newAccountPassword); 
-				
-				
-				htmlBuffer.append("<h2>XPaths that match the XML document</h2>"); 
-				htmlBuffer.append("<table border=\"1\" style=\"width:60%\">");
-				for(int i = 0; i < xpaths.length; i++){
-					htmlBuffer.append("<tr>"); 
-					htmlBuffer.append("<td>" + xpaths[i] + "</td>");
-					htmlBuffer.append("<td>" + urlMatches[i] + "</td>");
-					htmlBuffer.append("</tr>");
+				} else{
+					
+					htmlBuffer.append("<html>"); 
+					htmlBuffer.append("<h1>Wrong password!</h1></br>");
+					htmlBuffer.append("<body>User with the name \"" + loginUsername + "\" has different " +
+							"password than " + loginPassword + "!</br>");
+					htmlBuffer.append("Please re-enter your login information or create new user first.");
+					htmlBuffer.append("</body></br></br>");	
+					htmlBuffer.append("<button onclick=\"location.href='/servlet/xpath'\">Back</button>");
+					htmlBuffer.append("</body></html>"); 
+					
 				}
-				htmlBuffer.append("</table>");
+			} else { //user does not exist
+				
+				htmlBuffer.append("<html>"); 
+				htmlBuffer.append("<h1>User does not exist!</h1></br>");
+				htmlBuffer.append("<body>User with the name \"" + loginUsername + "\" does not exist!</br>");
+				htmlBuffer.append("Please re-enter your login information or create new user first.");
+				htmlBuffer.append("</body></br></br>");	
+				htmlBuffer.append("<button onclick=\"location.href='/servlet/xpath'\">Back</button>");
+				htmlBuffer.append("</body></html>"); 
+
+			}
+			
+			break;
+			
+		case 2:
+			boolean userAlreadyExists = DatabaseDAO.userExists(newAccount);
+			if(!userAlreadyExists){
+				User user = new User(newAccount, newAccountPassword);
+				DatabaseDAO.registerUser(user);
+				
+				htmlBuffer.append("<html><head>"); 
+				htmlBuffer.append("<meta http-equiv=\"refresh\" "); 		
+				htmlBuffer.append("content=\"5;URL=\'"); 
+				htmlBuffer.append("/servlet/xpath\'\"" + "></meta>"); //redirect url 
+				htmlBuffer.append("</head><body>");
+				htmlBuffer.append("<p>New user created!" + "</br>");
+				htmlBuffer.append("New username: " + newAccount + "</br>"); 											
+				htmlBuffer.append("New password: " + newAccountPassword + "</br>"); 										
+				htmlBuffer.append("You'll be redirected to the log in page in 5 seconds.</p>"); 											
+				htmlBuffer.append("</body></html>"); 
+
+			} else {
+				
+				htmlBuffer.append("<html>"); 
+				htmlBuffer.append("<h1>User already exists</h1></br>");
+				htmlBuffer.append("<body>User with the name \"" + newAccount + "\" already exists.</br>");
+				htmlBuffer.append("Please choose another username.");
+				htmlBuffer.append("</body></br></br>");	
+				htmlBuffer.append("<button onclick=\"location.href='/servlet/xpath'\">Back</button>");
 				htmlBuffer.append("</body></html>"); 
 			}
-		}
+			
+			break;
+			
+		case 0: //directly go to default
+			
+		default: //shouldn't get here! 
+			response.setStatus(500);
+			htmlBuffer.append("<!DOCTYPE HTML PUBLIC>"); 
+			htmlBuffer.append("<html><head>"); 
+			htmlBuffer.append("<title>500 Internal Error</title>"); 
+			htmlBuffer.append("</head><body>"); 
+			htmlBuffer.append("<h1>500 Internal Server Error</h1>"); 
+			htmlBuffer.append("Error with URL input."); 
+			htmlBuffer.append("</body></html>"); 
+			try { //hack-y solution to prevent system exiting too fast 
+				Thread.sleep(1000);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+			break;
+		}	
 		out.println(htmlBuffer.toString());
 		out.flush();
 		out.close();
+		DatabaseDAO.shutdown();
 	}
 }
+
+
+
+//if(url == null || url == ""){
+//response.setStatus(404);
+//htmlBuffer.append("<!DOCTYPE HTML PUBLIC>"); 
+//htmlBuffer.append("<html><head>"); 
+//htmlBuffer.append("<title>404 Not Found</title>"); 
+//htmlBuffer.append("</head><body>"); 
+//htmlBuffer.append("<h1>404 URL Not Found</h1>"); 
+//htmlBuffer.append("Error with URL input."); 
+//htmlBuffer.append("</body></html>"); 
+//try { //hack-y solution to prevent system exiting too fast 
+//	Thread.sleep(1000);
+//} catch (InterruptedException e) {
+//	e.printStackTrace();
+//}
+//validInputs = false;
+//} else if (XPath == null || XPath == ""){
+//response.setStatus(400);
+//htmlBuffer.append("<!DOCTYPE HTML PUBLIC>"); 
+//htmlBuffer.append("<html><head>"); 
+//htmlBuffer.append("<title>400 Malformed Request</title>");
+//htmlBuffer.append("</head><body>"); 
+//htmlBuffer.append("<h1>400 Malformed Request</h1>");
+//htmlBuffer.append("Error with XPath input."); 
+//htmlBuffer.append("</body></html>"); 
+//try { //hack-y solution to prevent system exiting too fast 
+//	Thread.sleep(1000); 
+//} catch (InterruptedException e) {
+//	e.printStackTrace();
+//}
+//validInputs = false;
+//}
+
