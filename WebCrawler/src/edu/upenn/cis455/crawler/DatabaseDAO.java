@@ -88,6 +88,15 @@ public class DatabaseDAO {
 	public static Webpage getPage(String URL){
 		return webpages.get(URL);
 	}
+
+	public static boolean pageExists(String URL){
+		if(webpages.get(URL) == null){
+			return false;
+		}
+		return true;
+//		return webpages.contains(URL);
+	}
+
 	
 	public static void deletePage(String URL){
 		webpages.delete(URL);

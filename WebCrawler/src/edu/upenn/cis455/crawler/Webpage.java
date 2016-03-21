@@ -23,6 +23,10 @@ public class Webpage {
 		this.URL = URL;
 	}
 	
+	public void resetTimestamp(){
+		this.timestamp = new Date();
+	}
+	
 	public String getContent(){
 		return content;
 	}
@@ -30,5 +34,9 @@ public class Webpage {
 	public boolean checkTimeStamp(Date currentTime){
 		return currentTime.after(timestamp);
 	}
-
+	
+	@Override
+	public String toString(){
+		return (URL + "\n\n" + timestamp + "\n\n" + content);
+	}
 }

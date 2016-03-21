@@ -12,7 +12,11 @@ import java.net.Socket;
 import java.net.URL;
 import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -23,7 +27,11 @@ import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 
 import org.w3c.dom.Document;
+import org.w3c.dom.Node;
 import org.w3c.tidy.Tidy;
+
+import com.sun.org.apache.xml.internal.dtm.ref.DTMNodeList;
+import com.sun.org.apache.xpath.internal.NodeSet;
 
 /**
  * Client for XPath servlet
@@ -57,7 +65,11 @@ public class HttpClient {
 	public String getURL(){
 		return this.url;
 	}
-
+	
+	public String getHost(){
+		return this.host;
+	}
+	
 	/**
 	 * Grabs the IP address of the URL
 	 * @param url
@@ -97,6 +109,87 @@ public class HttpClient {
     	}
 	}
 	
+	public boolean isModified(String modifiedTime, Date timestamp){
+		DateFormat formatter = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z");
+		Date modifiedDate = null;
+		try {
+			modifiedDate = formatter.parse(modifiedTime);
+		} catch (ParseException e) {
+			e.printStackTrace();
+		}
+		//timestamp = formatter.parse("Thu, 14 Mar 2016 18:36:04 GMT");
+		//System.out.println(timestamp);
+		return modifiedDate.after(timestamp);
+	}
+	
+	
+	/**
+	 * Makes HEAD request to the URL 
+	 * @param String URL 
+	 * @return Map headers
+	 * @throws IOException 
+	 * @throws ParseException 
+	 */
+	public Map<String, String> makeHeadRequest(String url) throws IOException, ParseException{
+		Socket socket = null;
+		PrintWriter out = null;
+		BufferedReader in = null;
+		String ipAddress = null;
+		this.path = null;
+		
+		//parse url
+		parseURL(url);
+		
+		//convert url to string and open connection
+		String robustURL = "http://" + this.host + this.path; 
+		try{
+			ipAddress = convertUrlToIP(robustURL);
+			socket = new Socket(ipAddress, port);
+			out = new PrintWriter(socket.getOutputStream(), true);
+			in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+		}catch(Exception e){
+			System.err.println("Couldn't connect to: " + robustURL);
+			return null;
+		}
+		
+		System.out.println("Client connected to host : " + ipAddress + " port: " + port);
+        
+		//send GET request
+		out.println("GET " + robustURL + " HTTP/1.1");
+		out.println("Host: " + this.host);
+		out.println("Connection: keep-alive");
+		out.println("User-Agent: cis455crawler");
+		out.println("\r\n");
+		out.println("\r\n");
+		
+		//read response
+		StringBuffer headerBuffer = new StringBuffer();
+		String line = null;
+
+		//get headers
+		line = in.readLine(); //e.g.: HTTP/1.1 200 OK 
+		headerBuffer.append(line);		
+		headerBuffer.append("\r\n");
+		while(true) {
+			line = in.readLine();
+			if (line == null || line.isEmpty()) break;
+			headerBuffer.append(line);
+			headerBuffer.append("\r\n");
+			String key = null;
+			String value = null;
+			try{
+				int separator = line.indexOf(":");
+				key = line.substring(0, separator).trim();
+				value = line.substring(separator + 1).trim();
+				headers.put(key, value);
+			}catch(Exception e){
+				System.err.println("Could not parse header: " + line + " " + e);
+			}
+		}
+		socket.close();
+		return this.headers;		
+	}
+	
 	/**
 	 * Connects to outside server and downloads requested XML page
 	 * @param url
@@ -131,18 +224,20 @@ public class HttpClient {
 		//send GET request
 		out.println("GET " + robustURL + " HTTP/1.1");
 		out.println("Host: " + this.host);
-		out.println("Connection: " + "keep-alive");
+		out.println("Connection: keep-alive");
+		out.println("User-Agent: cis455crawler");
 		out.println("\r\n");
 		out.println("\r\n");
-
+		
 		//read response
 		StringBuffer headerBuffer = new StringBuffer();
 		StringBuffer responseBuffer = new StringBuffer();
 		String line = null;
-		
+
 		//get headers
 		line = in.readLine(); //e.g.: HTTP/1.1 200 OK 
-
+		headerBuffer.append(line);		
+		headerBuffer.append("\r\n");
 		while(true) {
 			line = in.readLine();
 			if (line == null || line.isEmpty()) break;
@@ -160,6 +255,7 @@ public class HttpClient {
 			}
 		}
 		String length = headers.get("Content-Length");
+		
 		//get actual response
 		int count = 0;
 		char[] buf = new char[Integer.valueOf(length)];
@@ -214,15 +310,15 @@ public class HttpClient {
 		return tidy.parseDOM(xmlStream, null);		
 	}
 	
-	public String getXPathMatches(String XPath, String htmlPage) throws XPathExpressionException{
+	public ArrayList<String> getXPathMatches(XPathExpression xPathExpression, String htmlPage) throws XPathExpressionException{
 		//for webparser, this will get links from the XPath //link/*
 		//should eventually return ArrayList<String> 
 		ArrayList<String> xPathExpressions = new ArrayList<String>();
 		Document DOMdoc = convertHTMLDom(htmlPage);
-		XPathFactory xPathFactory = XPathFactory.newInstance();
-		XPath xPath = xPathFactory.newXPath();
-		XPathExpression xPathExpression = xPath.compile(XPath);
-		Object result = xPathExpression.evaluate(DOMdoc, XPathConstants.NODESET);
-		return result.toString();
+		DTMNodeList nodeSet = (DTMNodeList) xPathExpression.evaluate(DOMdoc, XPathConstants.NODESET);
+		for(int i = 0; i< nodeSet.getLength(); i++){
+			xPathExpressions.add(nodeSet.item(i).getNodeValue());
+		}
+		return xPathExpressions;
 	}
 }

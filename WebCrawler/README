@@ -4,20 +4,30 @@ SEAS login: jamespj
 Which features did you implement? 
   (list features, or write 'Entire assignment')
 
-  My XPath engine has a servlet that shows a website at /servlet/XPath where 
-  users can enter XPaths and a URL to retrieve a XML document.  The servlet 
-  can successfully retrieve a XML document and parse it into a DOM document. 
+    My XPath engine has a servlet that shows a website at /servlet/XPath where 
+    users can enter XPaths and a URL to retrieve a XML document.  The servlet 
+    can successfully retrieve a XML document and parse it into a DOM document. 
 
-  No JUnit tests.  
+  JUnit tests for Database class wrapper. 
 
-  Currently, my XPath engine cannot do a proper recursive descent when descending
-  the DOM document.  While my XPath engine can validate each XPath, when the XPath
-  engine traverses the DOM document, it can only find the correct node if the correct
-  node is the first one encountered or is a descendant of the first node encountered.
+    Currently, my XPath engine cannot do a proper recursive descent when descending
+    the DOM document.  While my XPath engine can validate each XPath, when the XPath
+    engine traverses the DOM document, it can only find the correct node if the correct
+    node is the first one encountered or is a descendant of the first node encountered.
 
-  For example, if the DOM document has three children that is named "item", and 
-  the XPath is /foo/bar/item[text()="Example"], then my XPath engine will only 
-  find the text(), "Example", if the text() is a child of the first "item" node. 
+    For example, if the DOM document has three children that is named "item", and 
+    the XPath is /foo/bar/item[text()="Example"], then my XPath engine will only 
+    find the text(), "Example", if the text() is a child of the first "item" node. 
+
+  java
+  -cp
+  crawler.jar:target/WEB-INF/lib/servlet-api.jar:target/WEB-INF/lib/jtidy-r938.jar:target/WEB-INF/lib/je-5.0.34.jar
+  edu.upenn.cis455.crawler.XPathCrawler
+  http://crawtest.cis.upenn.edu/
+  /home/cis455/workspace/HW2/database
+  10
+  10
+
 
 Did you complete any extra-credit tasks? If so, which ones?
   No.
@@ -27,6 +37,10 @@ Any special instructions for building and running your solution?
   with spaces before and after.  For example:
 
   /foo/bar :: /moreFoo/moreBar :: /evenMoreFoo[evenMoreBar]
+
+  The Berkeley database store that I used in my crawler is at: 
+
+  /home/cis455/workspace/HW2/database
 
 Did you personally write _all_ the code you are submitting
 (other than code from the course web page)?
